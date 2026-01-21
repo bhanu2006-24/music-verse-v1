@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Music Verse</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -17,6 +17,7 @@
                 radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
             background-attachment: fixed;
             color: #fff;
+            -webkit-tap-highlight-color: transparent;
         }
         .glass-panel {
             background: rgba(255, 255, 255, 0.05);
@@ -24,166 +25,212 @@
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .glass-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-        }
-        .glass-card:hover {
-            transform: translateY(-5px);
-            background: rgba(30, 41, 59, 0.9);
-            border-color: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        /* Mobile specific glass panel for better contrast */
+        @media (max-width: 768px) {
+            .glass-panel-mobile {
+                background: rgba(15, 23, 42, 0.85);
+                backdrop-filter: blur(20px);
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
         }
         .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+            width: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.02);
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 20px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
         @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.3); }
-            50% { box-shadow: 0 0 25px rgba(139, 92, 246, 0.6); }
+            0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.2); }
+            50% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.5); }
         }
-        .playing-indicator {
-            animation: pulse-glow 2s infinite;
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
-        code {
-            font-family: 'Courier New', Courier, monospace;
+        .album-art-playing {
+            animation: pulse-glow 3s infinite;
+        }
+        .disc-spinning {
+            animation: spin-slow 8s linear infinite;
+        }
+        .text-shadow {
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
     </style>
 </head>
-<body class="min-h-screen overflow-hidden flex flex-col">
+<body class="h-screen overflow-hidden flex flex-col">
 
     <!-- Navbar -->
-    <nav class="glass-panel sticky top-0 z-50 px-6 py-4 flex justify-between items-center bg-opacity-50">
+    <nav class="h-16 shrink-0 glass-panel px-4 md:px-6 flex justify-between items-center z-50 relative">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center text-white shadow-lg">
-                <i class="fa-solid fa-music"></i>
+            <div class="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center text-white shadow-lg">
+                <i class="fa-solid fa-music text-sm md:text-base"></i>
             </div>
-            <h1 class="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Music Verse</h1>
+            <h1 class="text-xl md:text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Music Verse</h1>
         </div>
-        <div class="flex gap-4">
-            <button onclick="toggleDownloadModal()" class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-sm font-medium backdrop-blur-sm border border-white/5">
-                <i class="fa-solid fa-plus mr-2"></i> Add Music
+        <div class="flex gap-3">
+            <button onclick="toggleMobileLibrary()" class="md:hidden w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:scale-95 transition-transform text-white/80">
+                <i class="fa-solid fa-list-ul"></i>
+            </button>
+            <button onclick="toggleDownloadModal()" class="w-9 h-9 md:w-auto md:px-4 md:py-2 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all text-sm font-medium border border-white/5 active:scale-95">
+                <i class="fa-solid fa-plus md:mr-2"></i> 
+                <span class="hidden md:inline">Add Music</span>
             </button>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="flex-1 flex overflow-hidden p-6 gap-6">
+    <main class="flex-1 flex overflow-hidden p-3 md:p-6 gap-6 relative">
         
-        <!-- Sidebar / Playlist -->
-        <aside class="w-1/3 max-w-md hidden md:flex flex-col glass-panel rounded-2xl overflow-hidden h-full">
-            <div class="p-4 border-b border-white/10 bg-white/5">
+        <!-- Sidebar / Library (Desktop) -->
+        <aside class="w-80 hidden md:flex flex-col glass-panel rounded-2xl overflow-hidden h-full shrink-0">
+            <div class="p-4 border-b border-white/10 bg-white/5 backdrop-blur-md">
                 <h2 class="font-semibold text-lg flex items-center gap-2">
-                    <i class="fa-solid fa-list-ul text-violet-400"></i> Library
-                    <span id="song-count" class="ml-auto text-xs bg-white/10 px-2 py-1 rounded-full text-gray-400">0 songs</span>
+                    <i class="fa-solid fa-compact-disc text-violet-400"></i> Library
+                    <span id="song-count" class="ml-auto text-xs bg-white/10 px-2 py-1 rounded-full text-gray-400 font-mono">0</span>
                 </h2>
             </div>
-            <div id="song-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
-                <!-- Song items will be injected here -->
-                <div class="text-center text-gray-500 mt-10">
-                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
-                    <p>Loading library...</p>
-                </div>
+            <div id="desktop-song-list" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                <!-- Injected via JS -->
             </div>
         </aside>
 
         <!-- Main Player Area -->
-        <section class="flex-1 glass-panel rounded-2xl flex flex-col relative overflow-hidden">
-            <!-- Background visualization or art -->
-            <div class="absolute inset-0 bg-gradient-to-br from-violet-900/20 to-fuchsia-900/20 z-0"></div>
+        <section class="flex-1 glass-panel rounded-2xl flex flex-col relative overflow-hidden h-full">
+            <!-- Background visualization -->
+            <div class="absolute inset-0 z-0 opacity-30 bg-gradient-to-b from-transparent via-violet-900/10 to-black/40"></div>
             
-            <div class="relative z-10 flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <div class="w-64 h-64 md:w-80 md:h-80 rounded-3xl bg-gradient-to-tr from-slate-800 to-slate-900 shadow-2xl flex items-center justify-center mb-8 border border-white/10 group relative overflow-hidden">
-                    <div class="absolute inset-0 bg-gradient-to-tr from-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                    <i class="fa-solid fa-compact-disc text-8xl text-white/20 group-hover:rotate-180 transition-transform duration-1000 ease-in-out"></i>
+            <!-- Album Art & Info -->
+            <div class="relative z-10 flex-1 flex flex-col items-center justify-center p-6 text-center w-full max-w-2xl mx-auto">
+                
+                <!-- Album Art Circle -->
+                <div class="w-64 h-64 md:w-80 md:h-80 rounded-full bg-slate-900 shadow-2xl flex items-center justify-center mb-8 border-4 border-white/5 relative overflow-hidden group album-art-playing">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-violet-500/20 to-fuchsia-500/20 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <div class="absolute inset-2 rounded-full border border-white/10"></div>
+                    <div class="absolute inset-16 rounded-full border border-white/5"></div>
+                    <!-- Spinning element when playing -->
+                    <div id="disc-viz" class="w-full h-full flex items-center justify-center opacity-70 transition-all duration-1000">
+                        <i class="fa-solid fa-compact-disc text-[10rem] md:text-[12rem] text-white/10"></i>
+                    </div>
                 </div>
                 
-                <h2 id="current-title" class="text-3xl md:text-4xl font-bold mb-2 tracking-tight text-white drop-shadow-md">Select a song</h2>
-                <p id="current-artist" class="text-lg text-gray-400 font-light">Music Verse Library</p>
+                <div class="w-full px-4">
+                    <h2 id="current-title" class="text-2xl md:text-4xl font-bold mb-2 tracking-tight text-white drop-shadow-lg truncate leading-tight">Select a song</h2>
+                    <p id="current-artist" class="text-base md:text-lg text-gray-400 font-medium tracking-wide">Music Verse</p>
+                </div>
             </div>
 
-            <!-- Controls -->
-            <div class="relative z-10 bg-black/20 backdrop-blur-md p-6 border-t border-white/5">
+            <!-- Controls Panel -->
+            <div class="relative z-20 glass-panel-mobile md:bg-black/20 md:backdrop-blur-md p-6 md:p-8 md:border-t border-white/5 pb-10 md:pb-8">
                 <!-- Progress -->
-                <div class="flex flex-col mb-4 group">
-                    <div class="relative w-full h-1.5 bg-white/10 rounded-full cursor-pointer overflow-hidden" id="progress-container">
-                        <div id="progress-bar" class="absolute left-0 top-0 h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 transition-all duration-100 group-hover:h-2"></div>
+                <div class="flex flex-col mb-6 group">
+                    <div class="relative w-full h-1.5 bg-white/10 rounded-full cursor-pointer overflow-hidden touch-none" id="progress-container">
+                        <div id="progress-bar" class="absolute left-0 top-0 h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 transition-all duration-100"></div>
                     </div>
-                    <div class="flex justify-between text-xs text-gray-400 mt-2 font-mono">
+                    <div class="flex justify-between text-xs text-gray-400 mt-2 font-mono px-1">
                         <span id="current-time">0:00</span>
                         <span id="duration">0:00</span>
                     </div>
                 </div>
 
-                <!-- Buttons -->
-                <div class="flex items-center justify-center gap-8">
-                    <button class="text-gray-400 hover:text-white transition-transform hover:scale-110" id="btn-prev">
-                        <i class="fa-solid fa-backward-step text-2xl"></i>
+                <!-- Main Buttons -->
+                <div class="flex items-center justify-between max-w-xs mx-auto md:max-w-md md:justify-center md:gap-10">
+                    
+                    <!-- Download Button (Mobile/Desktop) -->
+                     <button onclick="downloadCurrentSong()" class="text-gray-500 hover:text-white transition-colors p-2" title="Download Song">
+                        <i class="fa-solid fa-download text-lg"></i>
                     </button>
-                    <button id="btn-play" class="w-16 h-16 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 flex items-center justify-center text-white shadow-lg hover:shadow-violet-500/50 transition-all hover:scale-105 active:scale-95">
-                        <i class="fa-solid fa-play text-2xl pl-1"></i>
-                    </button>
-                    <button class="text-gray-400 hover:text-white transition-transform hover:scale-110" id="btn-next">
-                        <i class="fa-solid fa-forward-step text-2xl"></i>
-                    </button>
-                </div>
-                
-                <!-- Volume -->
-                <div class="absolute right-8 bottom-8 hidden md:flex items-center gap-3">
-                    <i class="fa-solid fa-volume-high text-gray-400"></i>
-                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1" class="w-24 accent-violet-500 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer">
+
+                    <div class="flex items-center gap-6 md:gap-8">
+                        <button class="text-gray-300 hover:text-white active:scale-95 transition-transform p-2" id="btn-prev">
+                            <i class="fa-solid fa-backward-step text-2xl md:text-3xl"></i>
+                        </button>
+                        
+                        <button id="btn-play" class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 flex items-center justify-center text-white shadow-xl shadow-violet-900/40 hover:scale-105 active:scale-95 transition-all outline-none">
+                            <i class="fa-solid fa-play text-2xl md:text-3xl pl-1"></i>
+                        </button>
+                        
+                        <button class="text-gray-300 hover:text-white active:scale-95 transition-transform p-2" id="btn-next">
+                            <i class="fa-solid fa-forward-step text-2xl md:text-3xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Volume Toggle (Mobile) / Slider (Desktop) -->
+                    <div class="relative flex items-center justify-center">
+                        <button class="text-gray-500 hover:text-white md:hidden" id="mobile-mute-btn">
+                            <i class="fa-solid fa-volume-high text-lg"></i>
+                        </button>
+                        
+                        <!-- Desktop Volume -->
+                        <div class="hidden md:flex items-center gap-2 group w-24">
+                            <i class="fa-solid fa-volume-high text-gray-400 text-sm"></i>
+                            <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1" class="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500">
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </section>
 
     </main>
 
-    <!-- Download/Add Music Modal -->
-    <div id="download-modal" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
-        <div class="bg-gray-900 border border-white/10 rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform scale-95 transition-transform duration-300 relative" id="download-modal-content">
-            <button onclick="toggleDownloadModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
-                <i class="fa-solid fa-xmark text-xl"></i>
+    <!-- Mobile Library Overlay -->
+    <div id="mobile-library" class="fixed inset-0 z-40 bg-slate-900/95 backdrop-blur-xl translate-y-full transition-transform duration-300 flex flex-col md:hidden">
+        <div class="p-6 pt-12 flex justify-between items-center bg-gradient-to-b from-slate-900 to-transparent">
+            <h2 class="text-2xl font-bold text-white tracking-tight">Library</h2>
+            <button onclick="toggleMobileLibrary()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
+                <i class="fa-solid fa-chevron-down"></i>
             </button>
+        </div>
+        <div id="mobile-song-list" class="flex-1 overflow-y-auto px-4 pb-20 space-y-2">
+            <!-- Injected via JS -->
+        </div>
+    </div>
 
-            <h3 class="text-2xl font-bold mb-2">Update Library</h3>
-            <p class="text-gray-400 mb-6 text-sm">Easily manage your music using the <code>music.json</code> file.</p>
+    <!-- Help Modal -->
+    <div id="download-modal" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md hidden flex items-center justify-center opacity-0 transition-opacity duration-300 p-4">
+        <div class="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
             
-            <div class="space-y-6">
-                
+            <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
+                <h3 class="text-xl font-bold">Manage Library</h3>
+                <button onclick="toggleDownloadModal()" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
+                <p class="text-gray-400 text-sm leading-relaxed">
+                    Music Verse runs as a static site. To add music, you use the terminal commands included in the project.
+                </p>
+
                 <!-- Step 1 -->
-                <div class="bg-black/30 p-4 rounded-xl border border-white/5">
-                    <h4 class="text-sm font-semibold text-violet-300 mb-2 uppercase tracking-wide">1. Add Links</h4>
-                    <p class="text-xs text-gray-400 mb-2">Open <code>downloads.json</code> in your project and add URLs.</p>
-                    <div class="bg-black/50 p-3 rounded-lg border border-white/10 font-mono text-xs text-gray-300">
-<pre>{
-  "videos": [
-    "https://youtu.be/..."
-  ],
-  "playlists": [
-    "https://youtube.com/playlist?list=..."
-  ]
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2 text-violet-300">
+                        <span class="w-6 h-6 rounded-full bg-violet-500/20 flex items-center justify-center text-xs font-bold border border-violet-500/30">1</span>
+                        <h4 class="text-sm font-bold uppercase tracking-wide">Add Links</h4>
+                    </div>
+                    <div class="bg-black/40 rounded-xl p-4 border border-white/5">
+                        <p class="text-xs text-gray-500 mb-2">Edit <code class="text-violet-200">downloads.json</code>:</p>
+                        <pre class="text-[10px] md:text-xs text-gray-300 font-mono overflow-x-auto whitespace-pre">{
+  "videos": ["https://youtu.be/..."],
+  "playlists": ["..."]
 }</pre>
                     </div>
                 </div>
 
                 <!-- Step 2 -->
-                <div class="bg-black/30 p-4 rounded-xl border border-white/5">
-                    <h4 class="text-sm font-semibold text-fuchsia-300 mb-2 uppercase tracking-wide">2. Sync Music</h4>
-                    <p class="text-xs text-gray-400 mb-2">Run this command to download new music and update your library:</p>
-                    <div class="flex items-center gap-3 bg-black/50 p-3 rounded-lg border border-white/10 group">
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2 text-fuchsia-300">
+                        <span class="w-6 h-6 rounded-full bg-fuchsia-500/20 flex items-center justify-center text-xs font-bold border border-fuchsia-500/30">2</span>
+                        <h4 class="text-sm font-bold uppercase tracking-wide">Sync Music</h4>
+                    </div>
+                    <div class="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5 group">
                         <code class="text-sm text-green-400 flex-1 font-mono" id="cmd-sync">npm run sync</code>
-                        <button onclick="copyCommand('cmd-sync')" class="text-gray-400 hover:text-white p-2 rounded hover:bg-white/10 transition-colors" title="Copy">
+                        <button onclick="copyCommand('cmd-sync')" class="text-gray-400 hover:text-white p-2" title="Copy">
                             <i class="fa-regular fa-copy"></i>
                         </button>
                     </div>
