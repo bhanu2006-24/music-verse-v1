@@ -88,15 +88,42 @@ function generateList() {
         files = [];
     }
     
-    // Filter for audio files
+    // Filter and map songs
+    let totalSizeBytes = 0;
     const songs = files.filter(file => {
         const ext = path.extname(file).toLowerCase();
-        return ['.mp3', '.m4a', '.wav', '.ogg'].includes(ext);
+        const isAudio = ['.mp3', '.m4a', '.wav', '.ogg'].includes(ext);
+        if (isAudio) {
+            const filePath = path.join(MUSIC_DIR, file);
+            try {
+                const stats = fs.statSync(filePath);
+                totalSizeBytes += stats.size;
+            } catch (e) {}
+        }
+        return isAudio;
     });
 
+    // Format size
+    const formatSize = (bytes) => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    const data = {
+        stats: {
+            totalSongs: songs.length,
+            totalSize: formatSize(totalSizeBytes),
+            lastUpdated: new Date().toLocaleString()
+        },
+        songs: songs
+    };
+
     // Write to JSON for Frontend
-    fs.writeFileSync(LIST_FILE, JSON.stringify(songs, null, 2));
-    console.log(`✨ Library updated with ${songs.length} songs!`);
+    fs.writeFileSync(LIST_FILE, JSON.stringify(data, null, 2));
+    console.log(`✨ Library updated with ${songs.length} songs (${data.stats.totalSize})!`);
 }
 
 // Run
