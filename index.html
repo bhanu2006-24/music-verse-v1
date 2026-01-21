@@ -57,9 +57,6 @@
         .disc-spinning {
             animation: spin-slow 8s linear infinite;
         }
-        .text-shadow {
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-        }
     </style>
 </head>
 <body class="h-screen overflow-hidden flex flex-col">
@@ -70,15 +67,28 @@
             <div class="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center text-white shadow-lg">
                 <i class="fa-solid fa-music text-sm md:text-base"></i>
             </div>
-            <h1 class="text-xl md:text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Music Verse</h1>
+            <h1 class="text-xl md:text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 hidden md:block">Music Verse</h1>
+            
+            <!-- Mobile Search Toggle -->
+            <div class="md:hidden flex items-center bg-white/10 rounded-full px-3 py-1.5 border border-white/5 w-40">
+                <i class="fa-solid fa-magnifying-glass text-gray-400 text-xs mr-2"></i>
+                <input type="text" id="mobile-search-input" placeholder="Search..." class="bg-transparent border-none outline-none text-sm text-white w-full placeholder-gray-500">
+            </div>
         </div>
-        <div class="flex gap-3">
+
+        <!-- Desktop Search & Actions -->
+        <div class="flex items-center gap-3">
+            <div class="hidden md:flex items-center bg-white/10 rounded-full px-4 py-2 border border-white/5 w-64 mr-4 transition-colors focus-within:bg-white/15">
+                <i class="fa-solid fa-magnifying-glass text-gray-400 text-sm mr-2"></i>
+                <input type="text" id="desktop-search-input" placeholder="Search library..." class="bg-transparent border-none outline-none text-sm text-white w-full placeholder-gray-500">
+            </div>
+
             <button onclick="toggleMobileLibrary()" class="md:hidden w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:scale-95 transition-transform text-white/80">
                 <i class="fa-solid fa-list-ul"></i>
             </button>
-            <button onclick="toggleDownloadModal()" class="w-9 h-9 md:w-auto md:px-4 md:py-2 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all text-sm font-medium border border-white/5 active:scale-95">
-                <i class="fa-solid fa-plus md:mr-2"></i> 
-                <span class="hidden md:inline">Add Music</span>
+            <button onclick="toggleSettingsModal()" class="w-9 h-9 md:w-auto md:px-4 md:py-2 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all text-sm font-medium border border-white/5 active:scale-95">
+                <i class="fa-solid fa-gear md:mr-2"></i> 
+                <span class="hidden md:inline">Dashboard</span>
             </button>
         </div>
     </nav>
@@ -88,11 +98,11 @@
         
         <!-- Sidebar / Library (Desktop) -->
         <aside class="w-80 hidden md:flex flex-col glass-panel rounded-2xl overflow-hidden h-full shrink-0">
-            <div class="p-4 border-b border-white/10 bg-white/5 backdrop-blur-md">
+            <div class="p-4 border-b border-white/10 bg-white/5 backdrop-blur-md flex justify-between items-center">
                 <h2 class="font-semibold text-lg flex items-center gap-2">
                     <i class="fa-solid fa-compact-disc text-violet-400"></i> Library
-                    <span id="song-count" class="ml-auto text-xs bg-white/10 px-2 py-1 rounded-full text-gray-400 font-mono">0</span>
                 </h2>
+                <span id="desktop-song-count" class="text-xs bg-white/10 px-2 py-1 rounded-full text-gray-400 font-mono">0</span>
             </div>
             <div id="desktop-song-list" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
                 <!-- Injected via JS -->
@@ -105,7 +115,7 @@
             <div class="absolute inset-0 z-0 opacity-30 bg-gradient-to-b from-transparent via-violet-900/10 to-black/40"></div>
             
             <!-- Album Art & Info -->
-            <div class="relative z-10 flex-1 flex flex-col items-center justify-center p-6 text-center w-full max-w-2xl mx-auto">
+            <div class="relative z-10 flex-1 flex flex-col items-center justify-center p-6 text-center w-full max-w-2xl mx-auto py-10 md:py-6">
                 
                 <!-- Album Art Circle -->
                 <div class="w-64 h-64 md:w-80 md:h-80 rounded-full bg-slate-900 shadow-2xl flex items-center justify-center mb-8 border-4 border-white/5 relative overflow-hidden group album-art-playing">
@@ -140,7 +150,7 @@
                 <!-- Main Buttons -->
                 <div class="flex items-center justify-between max-w-xs mx-auto md:max-w-md md:justify-center md:gap-10">
                     
-                    <!-- Download Button (Mobile/Desktop) -->
+                    <!-- Download Button -->
                      <button onclick="downloadCurrentSong()" class="text-gray-500 hover:text-white transition-colors p-2" title="Download Song">
                         <i class="fa-solid fa-download text-lg"></i>
                     </button>
@@ -159,13 +169,12 @@
                         </button>
                     </div>
 
-                    <!-- Volume Toggle (Mobile) / Slider (Desktop) -->
+                    <!-- Volume -->
                     <div class="relative flex items-center justify-center">
                         <button class="text-gray-500 hover:text-white md:hidden" id="mobile-mute-btn">
                             <i class="fa-solid fa-volume-high text-lg"></i>
                         </button>
                         
-                        <!-- Desktop Volume -->
                         <div class="hidden md:flex items-center gap-2 group w-24">
                             <i class="fa-solid fa-volume-high text-gray-400 text-sm"></i>
                             <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1" class="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500">
@@ -181,7 +190,10 @@
     <!-- Mobile Library Overlay -->
     <div id="mobile-library" class="fixed inset-0 z-[60] bg-slate-900/95 backdrop-blur-xl translate-y-full transition-transform duration-300 flex flex-col md:hidden">
         <div class="p-6 pt-12 flex justify-between items-center bg-gradient-to-b from-slate-900 to-transparent">
-            <h2 class="text-2xl font-bold text-white tracking-tight">Library</h2>
+            <div>
+                <h2 class="text-2xl font-bold text-white tracking-tight">Library</h2>
+                <span id="mobile-song-count" class="text-xs text-gray-400 font-mono">0 songs</span>
+            </div>
             <button onclick="toggleMobileLibrary()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
                 <i class="fa-solid fa-chevron-down"></i>
             </button>
@@ -191,49 +203,69 @@
         </div>
     </div>
 
-    <!-- Help Modal -->
-    <div id="download-modal" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md hidden flex items-center justify-center opacity-0 transition-opacity duration-300 p-4">
-        <div class="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+    <!-- Dashboard/Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md hidden flex items-center justify-center opacity-0 transition-opacity duration-300 p-4">
+        <div class="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-2xl shadow-2xl transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
             
             <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
-                <h3 class="text-xl font-bold">Manage Library</h3>
-                <button onclick="toggleDownloadModal()" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                <h3 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-violet-400"></i> Dashboard
+                </h3>
+                <button onclick="toggleSettingsModal()" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
-            <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
-                <p class="text-gray-400 text-sm leading-relaxed">
-                    Music Verse runs as a static site. To add music, you use the terminal commands included in the project.
-                </p>
-
-                <!-- Step 1 -->
-                <div class="space-y-2">
-                    <div class="flex items-center gap-2 text-violet-300">
-                        <span class="w-6 h-6 rounded-full bg-violet-500/20 flex items-center justify-center text-xs font-bold border border-violet-500/30">1</span>
-                        <h4 class="text-sm font-bold uppercase tracking-wide">Add Links</h4>
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-8">
+                
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
+                        <i class="fa-solid fa-music text-2xl text-violet-400 mb-2"></i>
+                        <p class="text-gray-400 text-xs uppercase tracking-wider">Total Songs</p>
+                        <p class="text-2xl font-bold text-white mt-1" id="stat-count">-</p>
                     </div>
-                    <div class="bg-black/40 rounded-xl p-4 border border-white/5">
-                        <p class="text-xs text-gray-500 mb-2">Edit <code class="text-violet-200">downloads.json</code>:</p>
-                        <pre class="text-[10px] md:text-xs text-gray-300 font-mono overflow-x-auto whitespace-pre">{
-  "videos": ["https://youtu.be/..."],
-  "playlists": ["..."]
-}</pre>
+                    <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
+                        <i class="fa-solid fa-hard-drive text-2xl text-fuchsia-400 mb-2"></i>
+                        <p class="text-gray-400 text-xs uppercase tracking-wider">Storage Used</p>
+                        <p class="text-2xl font-bold text-white mt-1" id="stat-size">-</p>
+                    </div>
+                    <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-center col-span-2 md:col-span-1">
+                        <i class="fa-solid fa-clock text-2xl text-blue-400 mb-2"></i>
+                        <p class="text-gray-400 text-xs uppercase tracking-wider">Last Sync</p>
+                        <p class="text-sm font-medium text-white mt-2 leading-tight" id="stat-update">-</p>
                     </div>
                 </div>
 
-                <!-- Step 2 -->
-                <div class="space-y-2">
-                    <div class="flex items-center gap-2 text-fuchsia-300">
-                        <span class="w-6 h-6 rounded-full bg-fuchsia-500/20 flex items-center justify-center text-xs font-bold border border-fuchsia-500/30">2</span>
-                        <h4 class="text-sm font-bold uppercase tracking-wide">Sync Music</h4>
+                <!-- Add Music Section -->
+                <div>
+                    <h4 class="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wide border-b border-white/10 pb-2">Add Content</h4>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-black/30 p-4 rounded-xl border border-white/5">
+                            <h5 class="text-sm font-semibold text-violet-200 mb-2">1. Edit <code>downloads.json</code></h5>
+                            <pre class="text-[10px] md:text-xs text-gray-300 font-mono bg-black/50 p-3 rounded-lg overflow-x-auto">{
+  "videos": ["URL..."],
+  "playlists": ["URL..."]
+}</pre>
+                        </div>
+
+                        <div class="bg-black/30 p-4 rounded-xl border border-white/5">
+                            <h5 class="text-sm font-semibold text-fuchsia-200 mb-2">2. Run Sync Command</h5>
+                            <div class="flex items-center gap-3 bg-black/50 p-3 rounded-lg border border-white/10 group">
+                                <code class="text-sm text-green-400 flex-1 font-mono" id="cmd-sync">npm run sync</code>
+                                <button onclick="copyCommand('cmd-sync')" class="text-gray-400 hover:text-white p-2" title="Copy">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5 group">
-                        <code class="text-sm text-green-400 flex-1 font-mono" id="cmd-sync">npm run sync</code>
-                        <button onclick="copyCommand('cmd-sync')" class="text-gray-400 hover:text-white p-2" title="Copy">
-                            <i class="fa-regular fa-copy"></i>
-                        </button>
-                    </div>
+                </div>
+
+                <div class="text-center pt-4">
+                    <a href="docs.html" target="_blank" class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-book"></i> View API Documentation
+                    </a>
                 </div>
 
             </div>

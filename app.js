@@ -8,6 +8,17 @@ const nextBtn = document.getElementById('btn-next');
 const desktopSongListEl = document.getElementById('desktop-song-list');
 const mobileSongListEl = document.getElementById('mobile-song-list');
 
+// Search Inputs
+const desktopSearchInput = document.getElementById('desktop-search-input');
+const mobileSearchInput = document.getElementById('mobile-search-input');
+
+// Stats Elements
+const statCountEl = document.getElementById('stat-count');
+const statSizeEl = document.getElementById('stat-size');
+const statUpdateEl = document.getElementById('stat-update');
+const desktopSongCountEl = document.getElementById('desktop-song-count');
+const mobileSongCountEl = document.getElementById('mobile-song-count');
+
 const currentTitleEl = document.getElementById('current-title');
 const currentArtistEl = document.getElementById('current-artist');
 const progressBar = document.getElementById('progress-bar');
@@ -17,14 +28,14 @@ const durationEl = document.getElementById('duration');
 const volumeSlider = document.getElementById('volume-slider');
 const mobileMuteBtn = document.getElementById('mobile-mute-btn');
 
-const downloadModal = document.getElementById('download-modal');
-const downloadModalContent = downloadModal.querySelector('div'); // First child div
-const songCountEl = document.getElementById('song-count');
+const settingsModal = document.getElementById('settings-modal');
+const settingsModalContent = settingsModal.querySelector('div'); 
 const mobileLibrary = document.getElementById('mobile-library');
 const discViz = document.getElementById('disc-viz');
 
-let songs = [];
-let currentSongIndex = -1;
+let allSongs = [];     // Full list
+let filteredSongs = []; // Currently displayed list
+let currentSongIndex = -1; // Index in ALL songs
 let isPlaying = false;
 
 // --- Initialization ---
@@ -46,22 +57,29 @@ async function fetchSongs() {
         const response = await fetch('music_list.json');
         if (!response.ok) throw new Error('Music list not found');
         const data = await response.json();
-        songs = data;
-        renderSongLists();
-        updateSongCount();
         
-        // Auto-load first song but don't play
-        if (songs.length > 0) {
+        // Handle new object structure or old array
+        if (Array.isArray(data)) {
+            allSongs = data;
+        } else {
+            allSongs = data.songs || [];
+            updateStats(data.stats);
+        }
+        
+        filteredSongs = [...allSongs];
+        renderSongLists();
+        updateSongCountUI();
+        
+        if (allSongs.length > 0) {
             loadSong(0, false);
         }
     } catch (error) {
         console.error('Error fetching songs:', error);
-        // Show error in lists
         const errorMsg = `
             <div class="text-center text-gray-500 mt-10 px-4">
                 <i class="fa-solid fa-triangle-exclamation text-2xl mb-2 opacity-50 text-red-400"></i>
                 <p>Failed to load music list.</p>
-                <p class="text-xs mt-2">Did you run <code class="bg-gray-800 px-1 rounded text-violet-300">npm run sync</code>?</p>
+                <p class="text-xs mt-2">Run <code class="bg-gray-800 px-1 rounded text-violet-300">npm run sync</code></p>
             </div>
         `;
         if (desktopSongListEl) desktopSongListEl.innerHTML = errorMsg;
@@ -69,61 +87,93 @@ async function fetchSongs() {
     }
 }
 
+function updateStats(stats) {
+    if (!stats) return;
+    if (statCountEl) statCountEl.textContent = stats.totalSongs;
+    if (statSizeEl) statSizeEl.textContent = stats.totalSize;
+    if (statUpdateEl) statUpdateEl.textContent = stats.lastUpdated;
+}
+
+function updateSongCountUI() {
+    const count = filteredSongs.length;
+    const text = `${count} ${count === 1 ? 'song' : 'songs'}`;
+    if (desktopSongCountEl) desktopSongCountEl.textContent = count;
+    if (mobileSongCountEl) mobileSongCountEl.textContent = text;
+}
+
+// --- Search Logic ---
+
+function filterSongs(query) {
+    if (!query) {
+        filteredSongs = [...allSongs];
+    } else {
+        const lower = query.toLowerCase();
+        filteredSongs = allSongs.filter(song => song.toLowerCase().includes(lower));
+    }
+    renderSongLists();
+    updateSongCountUI();
+}
+
 function renderSongLists() {
     // Helper to create song item
-    const createItem = (song, index) => {
+    const createItem = (song) => {
+        // Find original index to play correct song
+        const originalIndex = allSongs.indexOf(song);
         const title = song.replace(/\.(mp3|m4a|wav|ogg)$/i, '');
-        const isActive = currentSongIndex === index;
+        const isActive = currentSongIndex === originalIndex;
         
         const div = document.createElement('div');
         div.className = `p-3 rounded-xl cursor-pointer transition-all flex items-center gap-3 group border ${isActive ? 'bg-white/10 border-violet-500/30' : 'border-transparent hover:bg-white/5 border-white/5'}`;
         div.onclick = () => {
-            loadSong(index, true); 
-            toggleMobileLibrary(false); // Close mobile menu on select
+            loadSong(originalIndex, true); 
+            toggleMobileLibrary(false);
         };
         
         div.innerHTML = `
             <div class="w-10 h-10 shrink-0 rounded-lg bg-slate-800 flex items-center justify-center text-gray-400 ${isActive ? 'text-violet-400' : 'group-hover:text-white group-hover:bg-violet-600'} transition-colors relative overflow-hidden">
-                ${isActive && isPlaying 
+                 ${isActive && isPlaying 
                     ? '<div class="flex gap-0.5 items-end h-3"><div class="w-0.5 bg-violet-400 h-2 animate-[bounce_1s_infinite]"></div><div class="w-0.5 bg-violet-400 h-3 animate-[bounce_1.2s_infinite]"></div><div class="w-0.5 bg-violet-400 h-1 animate-[bounce_0.8s_infinite]"></div></div>'
                     : '<i class="fa-solid fa-music"></i>'
                 }
             </div>
             <div class="flex-1 min-w-0">
-                <h3 class="text-sm font-medium text-white truncate ${isActive ? 'text-violet-300' : ''}">${title}</h3>
-                <p class="text-xs text-gray-500 truncate">Local Audio</p>
+                <h3 class="text-sm font-medium text-white truncate text-left ${isActive ? 'text-violet-300' : ''}">${title}</h3>
+                <p class="text-xs text-gray-500 truncate text-left">Local Audio</p>
             </div>
         `;
         return div;
     };
 
-    // Render both lists
     if (desktopSongListEl) {
         desktopSongListEl.innerHTML = '';
-        songs.forEach((song, i) => desktopSongListEl.appendChild(createItem(song, i)));
+        if (filteredSongs.length === 0) {
+            desktopSongListEl.innerHTML = '<p class="text-gray-500 text-center text-sm py-4">No songs found.</p>';
+        } else {
+            filteredSongs.forEach(song => desktopSongListEl.appendChild(createItem(song)));
+        }
     }
     
     if (mobileSongListEl) {
         mobileSongListEl.innerHTML = '';
-        songs.forEach((song, i) => mobileSongListEl.appendChild(createItem(song, i)));
+        if (filteredSongs.length === 0) {
+            mobileSongListEl.innerHTML = '<p class="text-gray-500 text-center text-sm py-4">No songs found.</p>';
+        } else {
+            filteredSongs.forEach(song => mobileSongListEl.appendChild(createItem(song)));
+        }
     }
-}
-
-function updateSongCount() {
-    if (songCountEl) songCountEl.textContent = `${songs.length}`;
 }
 
 // --- Player Logic ---
 
 function loadSong(index, autoPlay = true) {
-    if (index < 0 || index >= songs.length) return;
+    if (index < 0 || index >= allSongs.length) return;
     
     currentSongIndex = index;
-    const songName = songs[index];
+    const songName = allSongs[index];
     const title = songName.replace(/\.(mp3|m4a|wav|ogg)$/i, '');
     
     currentTitleEl.textContent = title;
-    // Try to guess artist from filename if formatted like "Artist - Title"
+    // Guess artist
     if (title.includes('-')) {
         const parts = title.split('-');
         currentArtistEl.textContent = parts[0].trim();
@@ -134,23 +184,20 @@ function loadSong(index, autoPlay = true) {
     const encodedName = encodeURIComponent(songName);
     audioPlayer.src = `music/${encodedName}`;
     
-    renderSongLists(); // Update active state in UI
+    renderSongLists(); // Update active state
     
     if (autoPlay) {
         playSong();
     }
     
-    // Metadata for lock screen
+    // Metadata
     if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: title,
             artist: currentArtistEl.textContent,
             album: 'Music Verse',
-            artwork: [
-                { src: 'https://cdn-icons-png.flaticon.com/512/3074/3074767.png', sizes: '512x512', type: 'image/png' }
-            ]
+            artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/3074/3074767.png', sizes: '512x512', type: 'image/png' }]
         });
-        
         navigator.mediaSession.setActionHandler('play', playSong);
         navigator.mediaSession.setActionHandler('pause', pauseSong);
         navigator.mediaSession.setActionHandler('previoustrack', prevSong);
@@ -176,7 +223,7 @@ function togglePlay() {
     if (isPlaying) {
         pauseSong();
     } else {
-        if (currentSongIndex === -1 && songs.length > 0) {
+        if (currentSongIndex === -1 && allSongs.length > 0) {
             loadSong(0);
         } else if (currentSongIndex !== -1) {
             playSong();
@@ -190,28 +237,28 @@ function updatePlayButton() {
     } else {
         playIcon.className = 'fa-solid fa-play text-2xl md:text-3xl pl-1';
     }
-    renderSongLists(); // Update active icon animation
+    renderSongLists();
 }
 
 function prevSong() {
     let newIndex = currentSongIndex - 1;
-    if (newIndex < 0) newIndex = songs.length - 1;
+    if (newIndex < 0) newIndex = allSongs.length - 1;
     loadSong(newIndex);
 }
 
 function nextSong() {
     let newIndex = currentSongIndex + 1;
-    if (newIndex >= songs.length) newIndex = 0;
+    if (newIndex >= allSongs.length) newIndex = 0;
     loadSong(newIndex);
 }
+
+// --- Events & UI ---
 
 function updateProgress(e) {
     const { duration, currentTime } = e.srcElement;
     if (isNaN(duration)) return;
-    
     const progressPercent = (currentTime / duration) * 100;
     progressBar.style.width = `${progressPercent}%`;
-    
     currentTimeEl.textContent = formatTime(currentTime);
     durationEl.textContent = formatTime(duration);
 }
@@ -230,8 +277,6 @@ function formatTime(seconds) {
     return `${min}:${sec < 10 ? '0' : ''}${sec}`;
 }
 
-// --- Visual Effects ---
-
 function startVisualizer() {
     if (discViz) {
         discViz.parentElement.classList.add('album-art-playing');
@@ -243,18 +288,15 @@ function stopVisualizer() {
     if (discViz) {
         discViz.parentElement.classList.remove('album-art-playing');
         discViz.classList.remove('disc-spinning');
-        // Reset rotation occasionally or just let it stop
     }
 }
-
-// --- UI Actions ---
 
 window.downloadCurrentSong = function() {
     if (currentSongIndex === -1) {
         alert("Play a song first!");
         return;
     }
-    const songName = songs[currentSongIndex];
+    const songName = allSongs[currentSongIndex];
     const link = document.createElement('a');
     link.href = `music/${songName}`;
     link.download = songName;
@@ -266,7 +308,6 @@ window.downloadCurrentSong = function() {
 window.toggleMobileLibrary = function(forceState) {
     const isOpen = !mobileLibrary.classList.contains('translate-y-full');
     const newState = forceState !== undefined ? forceState : !isOpen;
-    
     if (newState) {
         mobileLibrary.classList.remove('translate-y-full');
     } else {
@@ -274,19 +315,19 @@ window.toggleMobileLibrary = function(forceState) {
     }
 }
 
-window.toggleDownloadModal = function() {
-    const isHidden = downloadModal.classList.contains('hidden');
+window.toggleSettingsModal = function() {
+    const isHidden = settingsModal.classList.contains('hidden');
     if (isHidden) {
-        downloadModal.classList.remove('hidden');
+        settingsModal.classList.remove('hidden');
         setTimeout(() => {
-            downloadModal.classList.remove('opacity-0');
-            downloadModalContent.classList.remove('scale-95');
+            settingsModal.classList.remove('opacity-0');
+            settingsModalContent.classList.remove('scale-95');
         }, 10);
     } else {
-        downloadModal.classList.add('opacity-0');
-        downloadModalContent.classList.add('scale-95');
+        settingsModal.classList.add('opacity-0');
+        settingsModalContent.classList.add('scale-95');
         setTimeout(() => {
-            downloadModal.classList.add('hidden');
+            settingsModal.classList.add('hidden');
         }, 300);
     }
 };
@@ -302,8 +343,6 @@ window.copyCommand = function(id) {
         }, 2000);
     });
 }
-
-// --- Event Listeners ---
 
 function setupEventListeners() {
     playBtn.addEventListener('click', togglePlay);
@@ -336,8 +375,14 @@ function setupEventListeners() {
         });
     }
 
+    // Search
+    const searchHandler = (e) => filterSongs(e.target.value);
+    if (desktopSearchInput) desktopSearchInput.addEventListener('input', searchHandler);
+    if (mobileSearchInput) mobileSearchInput.addEventListener('input', searchHandler);
+
     // Keyboard support
     document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') return; // Don't trigger if typing in search
         if (e.code === 'Space') {
             e.preventDefault();
             togglePlay();

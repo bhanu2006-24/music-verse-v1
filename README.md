@@ -42,7 +42,13 @@ The application provides a read-only public API for accessing the music library.
 **Response Format**:
 
 ```json
-["Song Name 1.mp3", "Song Name 2.mp3"]
+{
+  "stats": {
+    "totalSongs": 2,
+    "totalSize": "14 MB"
+  },
+  "songs": ["Song Name 1.mp3", "Song Name 2.mp3"]
+}
 ```
 
 You can use this endpoint to build your own clients or integrations.
