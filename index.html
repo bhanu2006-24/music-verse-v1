@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Verse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            background-attachment: fixed;
+            color: #fff;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-5px);
+            background: rgba(30, 41, 59, 0.9);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(139, 92, 246, 0.6); }
+        }
+        .playing-indicator {
+            animation: pulse-glow 2s infinite;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+    </style>
+</head>
+<body class="min-h-screen overflow-hidden flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="glass-panel sticky top-0 z-50 px-6 py-4 flex justify-between items-center bg-opacity-50">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center text-white shadow-lg">
+                <i class="fa-solid fa-music"></i>
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Music Verse</h1>
+        </div>
+        <div class="flex gap-4">
+            <button onclick="toggleDownloadModal()" class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-sm font-medium backdrop-blur-sm border border-white/5">
+                <i class="fa-solid fa-plus mr-2"></i> Add Music
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden p-6 gap-6">
+        
+        <!-- Sidebar / Playlist -->
+        <aside class="w-1/3 max-w-md hidden md:flex flex-col glass-panel rounded-2xl overflow-hidden h-full">
+            <div class="p-4 border-b border-white/10 bg-white/5">
+                <h2 class="font-semibold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-list-ul text-violet-400"></i> Library
+                    <span id="song-count" class="ml-auto text-xs bg-white/10 px-2 py-1 rounded-full text-gray-400">0 songs</span>
+                </h2>
+            </div>
+            <div id="song-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+                <!-- Song items will be injected here -->
+                <div class="text-center text-gray-500 mt-10">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p>Loading library...</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Player Area -->
+        <section class="flex-1 glass-panel rounded-2xl flex flex-col relative overflow-hidden">
+            <!-- Background visualization or art -->
+            <div class="absolute inset-0 bg-gradient-to-br from-violet-900/20 to-fuchsia-900/20 z-0"></div>
+            
+            <div class="relative z-10 flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <div class="w-64 h-64 md:w-80 md:h-80 rounded-3xl bg-gradient-to-tr from-slate-800 to-slate-900 shadow-2xl flex items-center justify-center mb-8 border border-white/10 group relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <i class="fa-solid fa-compact-disc text-8xl text-white/20 group-hover:rotate-180 transition-transform duration-1000 ease-in-out"></i>
+                </div>
+                
+                <h2 id="current-title" class="text-3xl md:text-4xl font-bold mb-2 tracking-tight text-white drop-shadow-md">Select a song</h2>
+                <p id="current-artist" class="text-lg text-gray-400 font-light">Music Verse Library</p>
+            </div>
+
+            <!-- Controls -->
+            <div class="relative z-10 bg-black/20 backdrop-blur-md p-6 border-t border-white/5">
+                <!-- Progress -->
+                <div class="flex flex-col mb-4 group">
+                    <div class="relative w-full h-1.5 bg-white/10 rounded-full cursor-pointer overflow-hidden" id="progress-container">
+                        <div id="progress-bar" class="absolute left-0 top-0 h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 w-0 transition-all duration-100 group-hover:h-2"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-400 mt-2 font-mono">
+                        <span id="current-time">0:00</span>
+                        <span id="duration">0:00</span>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex items-center justify-center gap-8">
+                    <button class="text-gray-400 hover:text-white transition-transform hover:scale-110" id="btn-prev">
+                        <i class="fa-solid fa-backward-step text-2xl"></i>
+                    </button>
+                    <button id="btn-play" class="w-16 h-16 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 flex items-center justify-center text-white shadow-lg hover:shadow-violet-500/50 transition-all hover:scale-105 active:scale-95">
+                        <i class="fa-solid fa-play text-2xl pl-1"></i>
+                    </button>
+                    <button class="text-gray-400 hover:text-white transition-transform hover:scale-110" id="btn-next">
+                        <i class="fa-solid fa-forward-step text-2xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Volume -->
+                <div class="absolute right-8 bottom-8 hidden md:flex items-center gap-3">
+                    <i class="fa-solid fa-volume-high text-gray-400"></i>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1" class="w-24 accent-violet-500 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Download/Add Music Modal -->
+    <div id="download-modal" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <div class="bg-gray-900 border border-white/10 rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform scale-95 transition-transform duration-300 relative" id="download-modal-content">
+            <button onclick="toggleDownloadModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <h3 class="text-2xl font-bold mb-2">Update Library</h3>
+            <p class="text-gray-400 mb-6 text-sm">Easily manage your music using the <code>music.json</code> file.</p>
+            
+            <div class="space-y-6">
+                
+                <!-- Step 1 -->
+                <div class="bg-black/30 p-4 rounded-xl border border-white/5">
+                    <h4 class="text-sm font-semibold text-violet-300 mb-2 uppercase tracking-wide">1. Add Links</h4>
+                    <p class="text-xs text-gray-400 mb-2">Open <code>downloads.json</code> in your project and add URLs.</p>
+                    <div class="bg-black/50 p-3 rounded-lg border border-white/10 font-mono text-xs text-gray-300">
+<pre>{
+  "videos": [
+    "https://youtu.be/..."
+  ],
+  "playlists": [
+    "https://youtube.com/playlist?list=..."
+  ]
+}</pre>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="bg-black/30 p-4 rounded-xl border border-white/5">
+                    <h4 class="text-sm font-semibold text-fuchsia-300 mb-2 uppercase tracking-wide">2. Sync Music</h4>
+                    <p class="text-xs text-gray-400 mb-2">Run this command to download new music and update your library:</p>
+                    <div class="flex items-center gap-3 bg-black/50 p-3 rounded-lg border border-white/10 group">
+                        <code class="text-sm text-green-400 flex-1 font-mono" id="cmd-sync">npm run sync</code>
+                        <button onclick="copyCommand('cmd-sync')" class="text-gray-400 hover:text-white p-2 rounded hover:bg-white/10 transition-colors" title="Copy">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <audio id="audio-player"></audio>
+    <script src="app.js"></script>
+</body>
+</html>

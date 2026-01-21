@@ -1,0 +1,23 @@
+{
+  "name": "music-verse-v1",
+  "version": "1.0.0",
+  "description": "A premium music gallery and downloader application.",
+  "main": "index.js",
+  "scripts": {
+    "sync": "node scripts/sync_music.js",
+    "dev": "npm run sync && http-server . -c-1 -a localhost -p 3000"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "fluent-ffmpeg": "^2.1.3",
+    "underscore": "^1.13.7",
+    "yt-dlp-exec": "^1.0.2"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
